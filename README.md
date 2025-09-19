@@ -1,4 +1,4 @@
-# WP Post-Hack Scanner
+# WP Security
 
 A bash script I personally use during **WordPress post-hack clean-up and investigations**.  
 It helps detect suspicious PHP code patterns and inspects the database for potential malicious payloads.
