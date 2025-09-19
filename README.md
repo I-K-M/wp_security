@@ -60,8 +60,7 @@ It combines a <strong>malware scanner</strong> and a <strong>surface attack scan
 cd wp_security</code></pre>
   </li>
   <li>Build the binaries:
-    <pre><code>go build wp_malware_scan.go
-go build wp_pentest.go</code></pre>
+    <pre><code>go build wp_pentest.go</code></pre>
   </li>
 </ol>
 
@@ -70,7 +69,7 @@ go build wp_pentest.go</code></pre>
 <h2>🖥 Usage</h2>
 
 <h3>Malware scanner</h3>
-<pre><code>./wp_malware_scan --path /var/www/html</code></pre>
+<pre><code>./wp_malware_scan # launch directly from a WP site directory</code></pre>
 
 <h3>Surface security scanner</h3>
 <pre><code>./wp_pentest --url https://example.com</code></pre>
