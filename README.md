@@ -7,9 +7,9 @@ It combines a <strong>malware scanner</strong> and a <strong>surface attack scan
 
 <h2>🚀 Features</h2>
 
-<h3>🔍 Malware Scanner (<code>wp_malware_scan.go</code>)</h3>
+<h3>🔍 Malware Scanner (<code>wp_malware_scan.sh</code>)</h3>
 <ul>
-  <li>Scans WordPress files for suspicious code patterns.</li>
+  <li>Scans WordPress files & db for suspicious code patterns.</li>
   <li>Detects usage of dangerous PHP functions (<code>base64_decode</code>, <code>eval</code>, <code>gzinflate</code>, etc.).</li>
   <li>Helps identify injected code and potentially compromised files.</li>
 </ul>
