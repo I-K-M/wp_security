@@ -1,95 +1,111 @@
-# WP Security
 
-A bash script I personally use during **WordPress post-hack clean-up and investigations**.  
-It helps detect suspicious PHP code patterns and inspects the database for potential malicious payloads.
+<h1>WP Security</h1>
+<p><strong>WP Security</strong> is a Go-based toolkit designed to analyse and improve the security of WordPress websites.<br>
+It combines a <strong>malware scanner</strong> and a <strong>surface attack scanner (pentest-style)</strong> to give developers and administrators a complete overview of their site’s security posture.</p>
 
----
+<hr>
 
-## What This Script Does
+<h2>🚀 Features</h2>
 
- **Scans PHP files** for known suspicious functions often used in malware or obfuscated code:
+<h3>🔍 Malware Scanner (<code>wp_malware_scan.go</code>)</h3>
+<ul>
+  <li>Scans WordPress files for suspicious code patterns.</li>
+  <li>Detects usage of dangerous PHP functions (<code>base64_decode</code>, <code>eval</code>, <code>gzinflate</code>, etc.).</li>
+  <li>Helps identify injected code and potentially compromised files.</li>
+</ul>
 
-- `eval(`
-- `base64_decode(`
-- `gzinflate(`
-- `gzuncompress(`
-- `str_rot13(`
-- `shell_exec(`
-- `exec(`
-- `passthru(`
-- `system(`
-- `assert(`
-- `preg_replace(`
-- `create_function(`
-- `file_put_contents(`
-- `curl_exec(`
-- `popen(`
-- `proc_open(`
-- `fopen(`
-- `php_uname(`
+<h3>🛡 Surface Attack Scanner (<code>wp_pentest.go</code>)</h3>
+<ul>
+  <li>Checks for sensitive files:
+    <ul>
+      <li><code>readme.html</code> (WordPress version disclosure)</li>
+      <li><code>wp-config.php</code> (critical config exposure)</li>
+      <li><code>.env</code> (credentials leak)</li>
+      <li><code>.git/</code> (source code leak)</li>
+    </ul>
+  </li>
+  <li>Tests API exposure:
+    <ul>
+      <li><code>/wp-json/wp/v2/users</code> (user enumeration)</li>
+    </ul>
+  </li>
+  <li>Checks XML-RPC: <code>/xmlrpc.php</code> availability (often abused for brute force or DDoS).</li>
+  <li>Detects directory listing in <code>/uploads/</code>.</li>
+  <li>Analyses <strong>security headers</strong>:
+    <ul>
+      <li><code>Content-Security-Policy</code></li>
+      <li><code>Strict-Transport-Security</code></li>
+      <li><code>X-Frame-Options</code></li>
+      <li><code>X-XSS-Protection</code></li>
+    </ul>
+  </li>
+</ul>
 
----
+<hr>
 
- **Scans these WordPress directories**:
+<h2>📂 Project structure</h2>
+<pre><code>wp_security/
+│── wp_malware_scan.go   # malware scanner
+│── wp_pentest.go        # surface security scanner
+│── README.md            # documentation
+│── go.mod               # Go module definition (if used)
+</code></pre>
 
-- `wp-content/cache`
-- `wp-content/uploads`
-- `wp-content/plugins`
-- `wp-content/themes`
-- `wp-content/mu-plugins`
-- `wp-includes`
-- the current directory (`.`)
+<hr>
 
----
+<h2>⚡ Installation</h2>
+<ol>
+  <li>Clone the repo:
+    <pre><code>git clone https://github.com/I-K-M/wp_security.git
+cd wp_security</code></pre>
+  </li>
+  <li>Build the binaries:
+    <pre><code>go build wp_malware_scan.go
+go build wp_pentest.go</code></pre>
+  </li>
+</ol>
 
- **Runs SQL queries** against your WordPress database to:
+<hr>
 
-- detect suspicious base64 payloads in `wp_options`
-- look for `<script>` tags inside post content
-- inspect cron jobs
-- check transients for potential malware
-- list the largest autoloaded options
-- dump user accounts
-- check user capabilities
+<h2>🖥 Usage</h2>
 
-All results are saved into a log file: `scan-result.log`.
+<h3>Malware scanner</h3>
+<pre><code>./wp_malware_scan --path /var/www/html</code></pre>
 
----
+<h3>Surface security scanner</h3>
+<pre><code>./wp_pentest --url https://example.com</code></pre>
 
-## How to Use
+<hr>
 
-**1. Edit database credentials** at the bottom of the script:
+<h2>📊 Example output (pentest)</h2>
+<pre><code>=== WordPress Pentest Tool ===
+Target: https://example.com
 
+[-] readme.html not found
+[-] REST API users protected
+[+] xmlrpc.php exposed (Method Not Allowed, but endpoint accessible)
+[-] wp-config.php protected
+[-] .env not accessible
+[-] .git directory protected
+[-] uploads dir protected
 
-DB_NAME='your_db_name'
+=== Security Headers Check ===
+[+] X-Frame-Options present
+[+] Content-Security-Policy present
+[-] X-XSS-Protection missing
+[+] Strict-Transport-Security present
+</code></pre>
 
-DB_USER='your_db_user'
+<hr>
 
-DB_PASS='your_db_password'
+<h2>⚠️ Disclaimer</h2>
+<p class="warning">This project is <strong>for educational and authorised testing only</strong>.</p>
 
-DB_HOST='localhost'
+<p>Valid use cases:</p>
+<ul>
+  <li>Scanning <strong>your own WordPress sites</strong></li>
+  <li>Running in <strong>lab environments</strong> (e.g., DVWA, vulnerable WordPress Docker images)</li>
+  <li>Conducting security reviews <strong>with explicit client authorisation</strong></li>
+</ul>
 
-**2. Make the script executable:**
-
-chmod +x wp-posthack-scan.sh
-
-**3. Run the script:**
-
-./wp-posthack-scan.sh
- 
-
-**Output**
-All output is logged into scan-result.log for later review.
-
-Alerts are highlighted in red if suspicious patterns are found.
-
-⚠️ Disclaimer
-This script does not clean or remove infected files automatically, it only detects suspicious content & you have to check manually afterwards.
-
-Always back up your site and database before running any scripts.
-
-**Why I Use It**
-In my work maintaining WordPress sites, after a hack I need to quickly spot suspicious code or database payloads that may persist even after cleaning infected files.
-This script saves time by scanning systematically for known malicious patterns.
-
-Happy scanning, and stay safe!
+<p class="warning">❌ Scanning third-party sites without permission is illegal.</p>
