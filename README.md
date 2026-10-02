@@ -70,6 +70,6 @@ CI automation must retain reports on codes 1 and 3. Local `suspicious` results n
 
 ## Verification and delivery
 
-CI runs local HTTP fixtures, Go race tests, `go vet`, govulncheck, Python tests, ShellCheck and source secret/configuration scanning. Tests contact no external assessment target. Release builds cover Linux amd64/arm64, Windows amd64 and macOS arm64; cross-compilation is not a claim that every host was runtime-tested.
+CI runs local HTTP fixtures, Go race tests, `go vet`, govulncheck, Python tests, a local MySQL SELECT-only fixture, ShellCheck and source secret/configuration scanning. Tests contact no external assessment target. Release builds cover Linux amd64/arm64, Windows amd64 and macOS arm64; cross-compilation is not a claim that every host was runtime-tested.
 
 See [delivery verification](docs/delivery.md), [threat model](docs/threat-model.md), [contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md). Use only on systems you own or have explicit permission to assess.
