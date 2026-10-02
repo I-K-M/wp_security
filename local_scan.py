@@ -60,11 +60,11 @@ def scan_files(root, max_bytes, excludes):
                 rows.append(finding('LOCAL-READ', relative, 'unknown', 'none', 'File unreadable or changed during scan'))
     return sorted(rows, key=lambda r: (r['path'], r['id']))
 
-def verify_inventory(root, checksums):
+def verify_inventory(root, checksums, extra_paths=('wp-admin', 'wp-includes')):
     rows = []
     for name, expected in sorted(checksums.items()):
         relative = Path(name)
-        if relative.is_absolute() or '..' in relative.parts or not re.fullmatch(r'[a-fA-F0-9]{32}', expected):
+        if relative.is_absolute() or '..' in relative.parts or not re.fullmatch(r'(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{64})', expected):
             raise ValueError('Invalid checksum manifest')
         path = root / relative
         if any((root / Path(*relative.parts[:i])).is_symlink() for i in range(1, len(relative.parts)+1)):
@@ -73,14 +73,14 @@ def verify_inventory(root, checksums):
             fd = safe_open(root, name)
             with os.fdopen(fd, 'rb') as handle:
                 if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode): raise OSError('Not a regular file')
-                hasher = hashlib.md5()
+                hasher = hashlib.sha256() if len(expected) == 64 else hashlib.md5()
                 for block in iter(lambda: handle.read(65536), b''): hasher.update(block)
                 digest = hasher.hexdigest()
             if digest.lower() != expected.lower():
                 rows.append(finding('INTEGRITY-MISMATCH', name, 'suspicious', 'high', 'Differs from reference; modifications are not automatically malware', 'high'))
         except OSError:
             rows.append(finding('INTEGRITY-MISSING', name, 'unknown', 'none', 'Reference file missing or unreadable'))
-    for directory in ('wp-admin', 'wp-includes'):
+    for directory in extra_paths:
         base = root / directory
         if base.is_symlink(): continue
         for folder, dirs, files in os.walk(base, followlinks=False):
@@ -101,6 +101,21 @@ def official_checksums(version, locale):
     checksums = json.loads(data).get('checksums')
     if not isinstance(checksums, dict) or not checksums: raise ValueError('No checksums for requested version/locale')
     return checksums
+
+def plugin_inventory(reference):
+    slug, separator, version = reference.partition('@')
+    if not separator or not re.fullmatch(r'[a-z0-9][a-z0-9-]*', slug) or not re.fullmatch(r'[A-Za-z0-9_.-]+', version):
+        raise ValueError('Plugin reference must be slug@trusted-version')
+    url = f'https://downloads.wordpress.org/plugin-checksums/{slug}/{version}.json'
+    with urllib.request.urlopen(url, timeout=15) as response:
+        data = response.read(2 * 1024 * 1024 + 1)
+        if len(data) > 2 * 1024 * 1024: raise ValueError('Plugin reference too large')
+    manifest = json.loads(data)
+    if manifest.get('plugin') != slug or str(manifest.get('version')) != version: raise ValueError('Plugin reference identity mismatch')
+    files = manifest.get('files')
+    if not isinstance(files, dict) or not files: raise ValueError('Plugin reference unavailable')
+    checksums = {name: hashes['sha256'] for name, hashes in files.items()}
+    return slug, checksums
 
 def database_checks(config, prefix):
     if not re.fullmatch(r'[A-Za-z0-9_]+', prefix): raise ValueError('Invalid table prefix')
@@ -125,6 +140,7 @@ def main():
     parser.add_argument('--exclude', action='append', default=[])
     parser.add_argument('--wp-version', help='Explicit trusted core version for official checksum verification')
     parser.add_argument('--locale', default='en_US')
+    parser.add_argument('--plugin', action='append', default=[], help='Explicit WordPress.org slug@trusted-version to verify')
     parser.add_argument('--mysql-config', type=Path)
     parser.add_argument('--table-prefix', default='wp_')
     args = parser.parse_args()
@@ -134,10 +150,20 @@ def main():
     if args.wp_version:
         try: rows.extend(verify_inventory(root, official_checksums(args.wp_version, args.locale)))
         except Exception: rows.append(finding('INTEGRITY-REFERENCE', '', 'unknown', 'none', 'Official checksums unavailable or invalid'))
+    for reference in args.plugin:
+        try:
+            slug, checksums = plugin_inventory(reference)
+            plugin_root = root / 'wp-content/plugins' / slug
+            if plugin_root.is_symlink() or not plugin_root.is_dir(): raise ValueError('Plugin directory unavailable')
+            for row in verify_inventory(plugin_root, checksums, ('',)):
+                row['path'] = 'wp-content/plugins/' + slug + '/' + row['path']
+                rows.append(row)
+        except Exception:
+            rows.append(finding('PLUGIN-REFERENCE', '', 'unknown', 'none', 'Plugin reference unavailable or invalid; premium/custom plugins require a trusted vendor inventory'))
     if args.mysql_config:
         try: rows.extend(database_checks(args.mysql_config, args.table_prefix))
         except Exception: rows.append(finding('DB-OPTIONS', '', 'unknown', 'none', 'Database configuration or query could not be evaluated'))
-    report = dict(schema_version=1, mode='local-triage', results=rows, coverage=dict(excludes=args.exclude, core_integrity=bool(args.wp_version), database=bool(args.mysql_config)), limitations='Heuristic observations do not prove a site clean or infected; premium/custom plugin integrity requires a trusted vendor reference')
+    report = dict(schema_version=1, mode='local-triage', results=rows, coverage=dict(excludes=args.exclude, core_integrity=bool(args.wp_version), plugin_references=args.plugin, database=bool(args.mysql_config)), limitations='Heuristic observations do not prove a site clean or infected; premium/custom plugin integrity requires a trusted vendor reference')
     text = json.dumps(report, indent=2) + '\n'
     if args.output:
         try:

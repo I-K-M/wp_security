@@ -42,7 +42,7 @@ python3 local_scan.py --root /path/to/wordpress --wp-version 6.8.3 --locale en_U
 bash full-wp-malware-scan-logged.sh --root /path/to/wordpress
 ```
 
-Use the actual trusted core version, not the illustrative value above. Explicit core verification retrieves the official WordPress checksum inventory over HTTPS. No WordPress bootstrap, plugin loading or PHP execution is performed. Hash differences are integrity findings, not automatic malware verdicts. Premium/custom plugin integrity requires a trusted vendor reference and is outside this core verifier.
+Use the actual trusted core version, not the illustrative value above. Explicit core verification retrieves the official WordPress checksum inventory over HTTPS. No WordPress bootstrap, plugin loading or PHP execution is performed. Hash differences are integrity findings, not automatic malware verdicts. Add repeatable `--plugin slug@trusted-version` options to verify WordPress.org plugins against official SHA256 inventories. Missing references remain unknown; premium/custom plugin integrity requires a trusted vendor reference and is outside this verifier.
 
 The file scanner walks once, skips symlinks, limits file reads and reports contextual obfuscation/process patterns and executable extensions in uploads. Results contain relative paths, line numbers and SHA256 hashes, never code excerpts. Use repeatable `--exclude PATTERN` options for reviewed exclusions; exclusions are recorded in report coverage.
 

@@ -39,4 +39,14 @@ class LocalTests(unittest.TestCase):
             rows = module.verify_inventory(root, {'index.php': '0' * 32})
             self.assertEqual({r['id'] for r in rows}, {'INTEGRITY-MISMATCH', 'INTEGRITY-EXTRA'})
 
+    def test_plugin_sha256_inventory(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as d:
+            root=pathlib.Path(d)
+            (root/'plugin.php').write_bytes(b'normal')
+            (root/'extra.php').write_bytes(b'extra')
+            rows=module.verify_inventory(root, {'plugin.php':hashlib.sha256(b'normal').hexdigest()}, ('',))
+            self.assertEqual(len(rows),1)
+            self.assertEqual(rows[0]['id'],'INTEGRITY-EXTRA')
+
 if __name__ == '__main__': unittest.main()

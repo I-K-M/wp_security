@@ -72,7 +72,7 @@ jobs:
   ci:
     name: CI passed
     if: ${{ always() }}
-    needs: [source, go]
+    needs: [source, go, package]
     runs-on: ubuntu-24.04
     steps:
       - name: Require all jobs
@@ -84,8 +84,7 @@ jobs:
           assert all(job['result']=='success' for job in json.loads(os.environ['RESULTS']).values())
           PYCODE
   package:
-    needs: ci
-    if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
+    needs: [source, go]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -98,7 +97,7 @@ jobs:
           cache: false
       - name: Package versioned release
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.0.0' }}
         run: |
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           mkdir -p dist
@@ -116,7 +115,8 @@ jobs:
           if-no-files-found: error
           retention-days: 3
   release:
-    needs: package
+    needs: ci
+    if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
